@@ -7,7 +7,7 @@
 ## Installation
 
 ```
-go get -u github.com/gagliardetto/distributed_examples
+go get -u github.com/gagliardetto/distributed_workers
 ```
 
 ## Getting Started
