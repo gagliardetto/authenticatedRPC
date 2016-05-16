@@ -16,7 +16,7 @@ Enter `distributed-workers-example` and run the `gen-keys.go` script to generate
 
 ```
 $ cd distributed-workers-example
-$ ./gen-keys.go
+$ go run gen-keys.go
 ```
 
 The newly-generated keys are inside a timestamped folder inside `key-sets` folder.
