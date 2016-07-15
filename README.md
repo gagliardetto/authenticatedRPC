@@ -2,7 +2,7 @@
 
 ## Description
 
-TLS-encrypted TCP-based real-time bidirectional authenticated messaging.
+TLS-encrypted TCP-based real-time bidirectional authenticated RPC.
 
 ## Installation
 
