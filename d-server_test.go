@@ -1,4 +1,4 @@
-package distributed_workers
+package authenticatedRPC
 
 import (
 	"testing"

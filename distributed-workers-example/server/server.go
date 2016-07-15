@@ -1,7 +1,8 @@
 package main
 
 import (
-	dis "bitbucket.org/gagliardetto/distributed_workers"
+	dis "github.com/gagliardetto/authenticated-RPC-in-Go"
+
 	"crypto/tls"
 	"fmt"
 	"time"

@@ -1,4 +1,4 @@
-# Distributed_workers
+# authenticated-RPC-in-Go
 
 ## Description
 
@@ -7,7 +7,7 @@ TLS-encrypted TCP-based real-time bidirectional authenticated messaging.
 ## Installation
 
 ```
-go get -u github.com/gagliardetto/distributed_workers
+go get -u github.com/gagliardetto/authenticated-RPC-in-Go
 ```
 
 ## Getting Started
