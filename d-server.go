@@ -284,7 +284,7 @@ func (w Worker) start(server *DistribServer) {
 				// Dispatcher has added a job to my jobQueue.
 				debug("started job")
 
-				server.handleServerMessage(job.uuu, job.buf)
+				server.handleMessageFromClient(job.uuu, job.buf)
 
 				debug("job completed")
 			case <-w.quitChan:
@@ -329,7 +329,7 @@ func (d *Dispatcher) dispatch() {
 
 ///////////////////////////////////////////////////////////////////////////
 
-func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
+func (server *DistribServer) handleMessageFromClient(uuu string, buf []byte) {
 	debug("received len:", len(buf))
 	debugf("%v#\n", string(buf))
 
