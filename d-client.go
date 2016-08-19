@@ -22,11 +22,10 @@ type (
 	}
 
 	ClientConfig struct {
-		DisableTLS     bool
-		Cert           tls.Certificate
-		PackExpiration time.Duration
-		PrivateKey     *rsa.PrivateKey
-		Server         struct {
+		DisableTLS bool
+		Cert       tls.Certificate
+		PrivateKey *rsa.PrivateKey
+		Server     struct {
 			EnableCertVerification bool
 			ServerName             string
 			ServerCertPath         string
@@ -41,8 +40,6 @@ func NewClient() DistribClient {
 	newInstance.callbacks = make(map[string]interface{})
 	newInstance.channels = FlowChannels{}
 	newInstance.channels.Channels = make(ChannelMap)
-
-	newInstance.Config.PackExpiration = time.Second * 5
 
 	return newInstance
 }
@@ -173,11 +170,13 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 		return
 	}
 
-	packIsNotExpired := time.Now().Sub(metaPack.Pack.IssueDate) > client.Config.PackExpiration
-	if packIsNotExpired {
-		fmt.Println("metaPack.Pack expired:", time.Now().Sub(metaPack.Pack.IssueDate), ">", client.Config.PackExpiration)
-		return
-	}
+	/*
+		packIsNotExpired := time.Now().Sub(metaPack.Pack.IssueDate) > client.Config.PackExpiration
+		if packIsNotExpired {
+			fmt.Println("metaPack.Pack expired:", time.Now().Sub(metaPack.Pack.IssueDate), ">", client.Config.PackExpiration)
+			return
+		}
+	*/
 
 	packIsTriggerCallType := metaPack.CallID != "" && metaPack.Type == triggerCallType
 	packIsTriggerAnswerType := metaPack.CallID != "" && metaPack.Type == triggerAnswerType
