@@ -27,10 +27,10 @@ type (
 		Cert       tls.Certificate
 		PrivateKey *rsa.PrivateKey
 		Client     struct {
-			EnableCertVerification bool
-			ServerName             string
-			ServerCertPath         string
-			PublicKey              *rsa.PublicKey
+			VerifyCert bool
+			Name       string
+			CertPath   string
+			PublicKey  *rsa.PublicKey
 		}
 		address *net.TCPAddr
 	}
@@ -68,11 +68,11 @@ func (server *DistribServer) Run(indirizzo string) error {
 
 		var clientCertPool *x509.CertPool
 
-		if server.Config.Client.EnableCertVerification {
+		if server.Config.Client.VerifyCert {
 
 			clientCertPool = x509.NewCertPool()
 
-			serverCert, err := ioutil.ReadFile(server.Config.Client.ServerCertPath)
+			serverCert, err := ioutil.ReadFile(server.Config.Client.CertPath)
 			if err != nil {
 				return fmt.Errorf("Can't open/find client certificate: %q", err)
 			}

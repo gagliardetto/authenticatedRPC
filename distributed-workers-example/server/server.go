@@ -20,9 +20,9 @@ func init() {
 	}
 	server.Config.Cert = cert
 
-	server.Config.Client.EnableCertVerification = true
-	server.Config.Client.ServerName = "distributed.client"
-	server.Config.Client.ServerCertPath = "keys-for-server/client.public.crt"
+	server.Config.Client.VerifyCert = true
+	server.Config.Client.Name = "distributed.client"
+	server.Config.Client.CertPath = "keys-for-server/client.public.crt"
 }
 
 func main() {
