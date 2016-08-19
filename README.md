@@ -10,7 +10,57 @@ TLS-encrypted TCP-based real-time bidirectional authenticated RPC.
 go get -u github.com/gagliardetto/authenticatedRPC
 ```
 
-## Getting Started
+## How it works
+
+Trigger (a call without response payload):
+
+```go
+instance.On("autoDestruction", func(cc dis.Context) {
+	// ...
+})
+```
+
+Request ( a call that returns a payload):
+
+```go
+instance.On("myNameIs", func(cc dis.Context) (interface{}, error) {
+	return "Tony Stark", nil
+})
+```
+
+How to call a trigger:
+
+```go
+instance.On("something", func(cc dis.Context) {
+	triggerPack := dis.Pack{
+		Destination: "autoDestruction",
+		Payload:     "Not this time",
+	}
+	err := cc.Trigger(triggerPack)
+	if err != nil {
+		fmt.Println(err)
+	}
+})
+```
+
+How to call a request:
+
+```go
+instance.On("something", func(cc dis.Context) {
+	requestPack := dis.Pack{
+		Destination: "myNameIs",
+		Payload:     "I'd like to know you.",
+	}
+	responsePack, err := cc.Receive(requestPack)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Awesome to meet you,", responsePack.Payload.(string))
+})
+```
+
+
+## Generate keys
 
 Enter `distributed-workers-example` and run the `gen-keys.go` script to generate the keys:
 
