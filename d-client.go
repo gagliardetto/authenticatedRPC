@@ -82,16 +82,17 @@ func (client *DistribClient) Connect(indirizzo string) error {
 		}
 
 		clientTLSconfig := tls.Config{
-			ServerName:         client.Config.Server.Name,
-			Certificates:       []tls.Certificate{client.Config.Cert},
+			ServerName:   client.Config.Server.Name,
+			Certificates: []tls.Certificate{client.Config.Cert},
+			RootCAs:      serverCertPool,
+
 			InsecureSkipVerify: false,
-			RootCAs:            serverCertPool,
 		}
 		clientTLSconfig.Rand = rand.Reader
 
 		conn, err = tls.Dial("tcp", client.Config.Server.address.String(), &clientTLSconfig)
 		if err != nil {
-			return fmt.Errorf("Error connecting TLS:", err.Error())
+			return fmt.Errorf("Error connecting via TLS: %v", err.Error())
 		}
 		debug("Connected via TLS to " + client.Config.Server.address.String())
 	}

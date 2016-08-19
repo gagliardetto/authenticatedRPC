@@ -9,18 +9,30 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync"
 
 	"github.com/renstrom/shortuuid"
+)
+
+var (
+	maxWorkers   = 5
+	maxQueueSize = 100
 )
 
 type (
 	DistribServer struct {
 		callbacks map[string]interface{}
-		clients   map[string]Client
+		clients   Clients
 		channels  FlowChannels
+
+		sync.Mutex
+		dispatcher *Dispatcher
+		jobQueue   chan Job
 
 		Config ServerConfig
 	}
+
+	Clients map[string]Client
 
 	ServerConfig struct {
 		DisableTLS bool
@@ -38,6 +50,7 @@ type (
 	Client struct {
 		Conn      net.Conn
 		PublicKey *rsa.PublicKey
+		Id        string
 	}
 )
 
@@ -51,24 +64,32 @@ func NewServer() DistribServer {
 	return newServer
 }
 
-func (server *DistribServer) Run(indirizzo string) error {
-	var listen net.Listener
+func (server *DistribServer) Run(rawAddress string) error {
+	var listener net.Listener
 	var err error
 
-	address, err := net.ResolveTCPAddr("tcp", indirizzo)
+	server.Config.address, err = net.ResolveTCPAddr("tcp", rawAddress)
 	if err != nil {
 		return err
 	}
-	server.Config.address = address
+
+	// Create the job queue.
+	server.jobQueue = make(chan Job, maxQueueSize)
+
+	// Start the dispatcher.
+	server.dispatcher = NewDispatcher(server.jobQueue, maxWorkers)
+	server.runDispatcher()
 
 	if server.Config.DisableTLS {
-		listen, err = net.Listen("tcp", server.Config.address.String())
+
+		listener, err = net.Listen("tcp", server.Config.address.String())
 		if err != nil {
 			return fmt.Errorf("Error listening plain text:", err.Error())
 		}
 		debug("Listening (plain) on " + server.Config.address.String())
 
 	} else {
+
 		if len(server.Config.Cert.Certificate) < 1 {
 			panic("Error: SSL is enabled, but no certificate was provided. Please provide certificate (recommended) or disable SSL.")
 		}
@@ -93,34 +114,37 @@ func (server *DistribServer) Run(indirizzo string) error {
 			Certificates: []tls.Certificate{server.Config.Cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 			ClientCAs:    clientCertPool,
+
+			InsecureSkipVerify: false,
 		}
 		serverTLSconfig.Rand = rand.Reader
 
-		listen, err = tls.Listen("tcp", server.Config.address.String(), &serverTLSconfig)
+		listener, err = tls.Listen("tcp", server.Config.address.String(), &serverTLSconfig)
 		if err != nil {
-			return fmt.Errorf("Error listening TLS:", err.Error())
+			return fmt.Errorf("Error listening TLS: %v", err.Error())
 		}
 		debug("Listening (TLS) on " + server.Config.address.String())
 	}
 
 	// Close the listener when the application closes.
-	defer listen.Close()
+	defer listener.Close()
 
 	for {
 		// Listen for an incoming connection.
-		conn, err := listen.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			debug("Error accepting: ", err.Error())
 			continue
 		}
 
 		uuu := shortuuid.New()
-		fmt.Println(uuu)
-		client := Client{
+		debugf("new suuid: %q", uuu)
+		newClient := Client{
 			Conn:      conn,
 			PublicKey: server.Config.Client.PublicKey,
+			Id:        uuu,
 		}
-		server.clients[uuu] = client
+		server.AddClient(newClient)
 
 		// Is called when a client connects to this server.
 		go func(server *DistribServer) {
@@ -134,17 +158,49 @@ func (server *DistribServer) Run(indirizzo string) error {
 					Type: triggerCallType,
 				})
 				if err != nil {
-					debug(err)
+					fmt.Println(err)
 				}
 			}
 		}(server)
 
 		// Handle connections in a new goroutine.
-		go server.handleConnectionFromClient(uuu, conn)
+		go server.handleConnectionFromClient(uuu)
 	}
 }
 
-func (server *DistribServer) handleConnectionFromClient(uuu string, conn net.Conn) {
+func (s *DistribServer) AddClient(newClient Client) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if _, ok := s.clients[newClient.Id]; ok {
+		return fmt.Errorf("Client with id %v already exists", newClient.Id)
+	}
+
+	s.clients[newClient.Id] = newClient
+
+	return nil
+}
+
+func (s *DistribServer) ClientById(uuu string) (*Client, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	if c, ok := s.clients[uuu]; ok {
+		return &c, nil
+	}
+	return &Client{}, fmt.Errorf("Client with id %v does not exists", uuu)
+}
+
+func (server *DistribServer) handleConnectionFromClient(uuu string) error {
+
+	var client *Client
+	var conn net.Conn
+	var err error
+	client, err = server.ClientById(uuu)
+	if err != nil {
+		return err
+	}
+	conn = client.Conn
 
 	defer func(conn net.Conn) {
 		debug(conn.LocalAddr(), conn.RemoteAddr())
@@ -157,16 +213,121 @@ func (server *DistribServer) handleConnectionFromClient(uuu string, conn net.Con
 		buf, isPrefix, err := reader.ReadLine()
 
 		if err != nil {
-			fmt.Println("Error reading (server):\"", err.Error(), "\"")
+			fmt.Println(fmt.Sprintf("Error reading (server): %v", err.Error()))
 			conn.Close()
 			break
 		}
 
 		if !isPrefix && len(buf) > 0 {
-			go server.handleServerMessage(uuu, buf)
+			// Create Job and push the work onto the jobQueue.
+			job := Job{
+				Name: "some job",
+				uuu:  uuu,
+				buf:  buf,
+			}
+			server.jobQueue <- job
+		}
+	}
+
+	return nil
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+// Job holds the attributes needed to perform unit of work.
+type Job struct {
+	Name string
+	uuu  string
+	buf  []byte
+}
+
+// NewWorker creates takes a numeric id and a channel w/ worker pool.
+func NewWorker(id int, workerPool chan chan Job) Worker {
+	return Worker{
+		id:         id,
+		jobQueue:   make(chan Job),
+		workerPool: workerPool,
+		quitChan:   make(chan bool),
+	}
+}
+
+type Worker struct {
+	id         int
+	jobQueue   chan Job
+	workerPool chan chan Job
+	quitChan   chan bool
+}
+
+func (server *DistribServer) runDispatcher() {
+	for i := 0; i < server.dispatcher.maxWorkers; i++ {
+		worker := NewWorker(i+1, server.dispatcher.workerPool)
+		worker.start(server)
+	}
+
+	go server.dispatcher.dispatch()
+}
+
+type Dispatcher struct {
+	workerPool chan chan Job
+	maxWorkers int
+	jobQueue   chan Job
+}
+
+func (w Worker) start(server *DistribServer) {
+	go func() {
+		for {
+			// Add my jobQueue to the worker pool.
+			w.workerPool <- w.jobQueue
+
+			select {
+			case job := <-w.jobQueue:
+				// Dispatcher has added a job to my jobQueue.
+				debug("started job")
+
+				server.handleServerMessage(job.uuu, job.buf)
+
+				debug("job completed")
+			case <-w.quitChan:
+				// We have been asked to stop.
+				fmt.Printf("worker%d stopping\n", w.id)
+				return
+			}
+		}
+	}()
+}
+
+func (w Worker) stop() {
+	go func() {
+		w.quitChan <- true
+	}()
+}
+
+// NewDispatcher creates, and returns a new Dispatcher object.
+func NewDispatcher(jobQueue chan Job, maxWorkers int) *Dispatcher {
+	workerPool := make(chan chan Job, maxWorkers)
+
+	return &Dispatcher{
+		jobQueue:   jobQueue,
+		maxWorkers: maxWorkers,
+		workerPool: workerPool,
+	}
+}
+
+func (d *Dispatcher) dispatch() {
+	for {
+		select {
+		case job := <-d.jobQueue:
+			go func() {
+				fmt.Printf("fetching workerJobQueue for: %s\n", job.Name)
+				workerJobQueue := <-d.workerPool
+				fmt.Printf("adding %s to workerJobQueue\n", job.Name)
+				workerJobQueue <- job
+			}()
 		}
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////
 
 func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 	debug("received len:", len(buf))
