@@ -28,6 +28,8 @@ func init() {
 func main() {
 
 	server.On(dis.ConnectEvent, func(cc dis.Context) {
+		fmt.Println("asking client their name")
+
 		requestPack := dis.Pack{
 			Destination: "myNameIs",
 			Payload:     "I'd like to know you.",
@@ -42,7 +44,7 @@ func main() {
 	server.On("ping-pong", func(cc dis.Context) {
 
 		fmt.Printf("\nNew ping-pong strike from client: %q\n", cc.Data)
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 1000)
 
 		requestPack := dis.Pack{
 			Destination: "ping-pong",

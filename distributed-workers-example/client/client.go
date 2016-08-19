@@ -49,7 +49,7 @@ func main() {
 	client.On("ping-pong", func(cc dis.Context) {
 
 		fmt.Printf("\nNew ball from server: %q\n", cc.Data)
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 1000)
 
 		requestPack := dis.Pack{
 			Destination: "ping-pong",
@@ -62,7 +62,7 @@ func main() {
 	})
 
 	client.On("myNameIs", func(cc dis.Context) (string, error) {
-		return "TOny Stark", nil
+		return "Tony Stark", nil
 	})
 
 	client.On("ciaoo", func(cc dis.Context) {
