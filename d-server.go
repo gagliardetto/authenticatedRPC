@@ -58,6 +58,9 @@ func NewServer() DistribServer {
 	newServer.channels = FlowChannels{}
 	newServer.channels.Channels = make(ChannelMap)
 
+	newServer.maxWorkers = 5
+	newServer.maxQueueSize = 100
+
 	return newServer
 }
 
@@ -217,6 +220,7 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 
 		if !isPrefix && len(buf) > 0 {
 			// Create Job and push the work onto the jobQueue.
+			debug("received job blob")
 			job := Job{
 				Name: "some server job",
 				uuu:  uuu,
@@ -234,7 +238,9 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 func (server *DistribServer) runDispatcher() {
 	for i := 0; i < server.dispatcher.maxWorkers; i++ {
 		worker := NewWorker(i+1, server.dispatcher.workerPool)
+		debug("starting worker.startWithServer(server)")
 		worker.startWithServer(server)
+		debug("started worker.startWithServer(server)")
 	}
 
 	go server.dispatcher.dispatch()
@@ -243,6 +249,7 @@ func (server *DistribServer) runDispatcher() {
 func (w Worker) startWithServer(server *DistribServer) {
 	go func() {
 		for {
+			debug("startWithServer")
 			// Add my jobQueue to the worker pool.
 			w.workerPool <- w.jobQueue
 

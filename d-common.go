@@ -18,7 +18,7 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
-var Debugging bool = false
+var Debugging bool = true
 
 const (
 	ConnectEvent string = "DefaultConnectEvent"

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"sync"
 )
 
 type (
@@ -18,7 +17,6 @@ type (
 		Conn      net.Conn
 		channels  FlowChannels
 
-		sync.Mutex
 		dispatcher   *Dispatcher
 		jobQueue     chan Job
 		maxWorkers   int
@@ -46,6 +44,9 @@ func NewClient() DistribClient {
 	newClient.callbacks = make(map[string]interface{})
 	newClient.channels = FlowChannels{}
 	newClient.channels.Channels = make(ChannelMap)
+
+	newClient.maxWorkers = 5
+	newClient.maxQueueSize = 100
 
 	return newClient
 }
@@ -156,6 +157,7 @@ func (client *DistribClient) handleConnectionFromServer() {
 		}
 
 		if !isPrefix && len(buf) > 0 {
+			debug("received job blob")
 			// Create Job and push the work onto the jobQueue.
 			job := Job{
 				Name: "some client job",
@@ -180,6 +182,7 @@ func (client *DistribClient) runDispatcher() {
 func (w Worker) startWithClient(client *DistribClient) {
 	go func() {
 		for {
+			debug("startWithClient")
 			// Add my jobQueue to the worker pool.
 			w.workerPool <- w.jobQueue
 
