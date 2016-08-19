@@ -63,7 +63,7 @@ func (server *DistribServer) Run(indirizzo string) error {
 
 	if !server.Config.DisableTLS {
 		if len(server.Config.Cert.Certificate) < 1 {
-			return fmt.Errorf("Error: SSL is enabled, but no certificate was provided. Please provide certificate (recommended) or disable SSL.")
+			panic("Error: SSL is enabled, but no certificate was provided. Please provide certificate (recommended) or disable SSL.")
 		}
 
 		var clientCertPool *x509.CertPool
@@ -74,11 +74,11 @@ func (server *DistribServer) Run(indirizzo string) error {
 
 			serverCert, err := ioutil.ReadFile(server.Config.Client.CertPath)
 			if err != nil {
-				return fmt.Errorf("Can't open/find client certificate: %q", err)
+				panic(fmt.Sprintf("Can't open/find client certificate: %q", err))
 			}
 
 			if ok := clientCertPool.AppendCertsFromPEM([]byte(serverCert)); !ok {
-				return fmt.Errorf("Failed to append client certificate to pool")
+				panic("Failed to append client certificate to pool")
 			}
 		}
 
