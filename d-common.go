@@ -18,7 +18,7 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
-var Debugging = false
+var Debugging bool = false
 
 const (
 	ConnectEvent string = "DefaultConnectEvent"
@@ -422,13 +422,13 @@ func hash(bytesToHash []byte) []byte {
 }
 
 func debugf(format string, a ...interface{}) (n int, err error) {
-	if debugging {
+	if Debugging {
 		return fmt.Println(fmt.Sprintf(format, a...))
 	}
 	return 0, nil
 }
 func debug(a ...interface{}) (n int, err error) {
-	if debugging {
+	if Debugging {
 		return fmt.Println(a...)
 	}
 	return 0, nil

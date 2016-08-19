@@ -2,7 +2,6 @@ package authenticatedRPC
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -10,15 +9,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"time"
 )
 
 type (
 	DistribClient struct {
 		callbacks map[string]interface{}
 		Conn      net.Conn
-		Config    ClientConfig
 		channels  FlowChannels
+
+		Config ClientConfig
 	}
 
 	ClientConfig struct {
@@ -36,12 +35,12 @@ type (
 )
 
 func NewClient() DistribClient {
-	var newInstance DistribClient
-	newInstance.callbacks = make(map[string]interface{})
-	newInstance.channels = FlowChannels{}
-	newInstance.channels.Channels = make(ChannelMap)
+	var newClient DistribClient
+	newClient.callbacks = make(map[string]interface{})
+	newClient.channels = FlowChannels{}
+	newClient.channels.Channels = make(ChannelMap)
 
-	return newInstance
+	return newClient
 }
 
 func (client *DistribClient) Connect(indirizzo string) error {
@@ -157,13 +156,13 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 		return
 	}
 
-	encodedPack, err := metaPack.Pack.encode()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	/*
+		encodedPack, err := metaPack.Pack.encode()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		encodedMessagePackHash := hash(encodedPack)
 		hashesMatch := bytes.Equal(encodedMessagePackHash, metaPack.Hash)
 		if !hashesMatch {

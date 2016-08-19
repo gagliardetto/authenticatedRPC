@@ -68,7 +68,7 @@ func main() {
 	for {
 		fmt.Println("Starting server...")
 		if err := server.Run("127.0.0.1:3333"); err != nil {
-			fmt.Println("Server went down")
+			fmt.Println("Server went down:", err)
 			time.Sleep(time.Second * 3)
 			continue
 		}

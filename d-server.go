@@ -2,7 +2,6 @@ package authenticatedRPC
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -10,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"time"
 
 	"github.com/renstrom/shortuuid"
 )
@@ -19,8 +17,9 @@ type (
 	DistribServer struct {
 		callbacks map[string]interface{}
 		clients   map[string]Client
-		Config    ServerConfig
 		channels  FlowChannels
+
+		Config ServerConfig
 	}
 
 	ServerConfig struct {
@@ -43,17 +42,13 @@ type (
 )
 
 func NewServer() DistribServer {
-	var newInstance DistribServer
-	newInstance.callbacks = make(map[string]interface{})
-	newInstance.clients = make(map[string]Client)
-	newInstance.channels = FlowChannels{}
-	newInstance.channels.Channels = make(ChannelMap)
+	var newServer DistribServer
+	newServer.callbacks = make(map[string]interface{})
+	newServer.clients = make(map[string]Client)
+	newServer.channels = FlowChannels{}
+	newServer.channels.Channels = make(ChannelMap)
 
-	return newInstance
-}
-
-func (server *DistribServer) CountClients() int {
-	return len(server.clients)
+	return newServer
 }
 
 func (server *DistribServer) Run(indirizzo string) error {
@@ -184,18 +179,19 @@ func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 		return
 	}
 
-	encodedPack, err := metaPack.Pack.encode()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	/*
+		encodedPack, err := metaPack.Pack.encode()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
-	/*encodedMessagePackHash := hash(encodedPack)
-	hashesMatch := bytes.Equal(encodedMessagePackHash, metaPack.Hash)
-	if !hashesMatch {
-		fmt.Println("Hash equation failed:", string(encodedMessagePackHash), hash(metaPack.Hash))
-		return
-	}
+		encodedMessagePackHash := hash(encodedPack)
+		hashesMatch := bytes.Equal(encodedMessagePackHash, metaPack.Hash)
+		if !hashesMatch {
+			fmt.Println("Hash equation failed:", string(encodedMessagePackHash), hash(metaPack.Hash))
+			return
+		}
 	*/
 
 	/*
@@ -272,6 +268,15 @@ func (server *DistribServer) newContext(uuu string, pack Pack) (Context, error) 
 	return cc, nil
 }
 
+func (server *DistribServer) On(funcName string, callback interface{}) error {
+	if _, ok := server.callbacks[funcName]; ok {
+		panic(fmt.Sprintf("Callback name %q already existing; please choose a different one", funcName))
+	}
+
+	server.callbacks[funcName] = callback
+	return nil
+}
+
 func (server *DistribServer) Trigger(uuu string, metaPack MetaPack) error {
 
 	if _, ok := server.callbacks[string(metaPack.Pack.Destination)]; !ok {
@@ -322,11 +327,6 @@ func (server *DistribServer) Request(uuu string, metaPack MetaPack) (string, err
 	return "", fmt.Errorf("Callback %q is not of right format (%#v instead of func(Context) (string, error))", string(metaPack.Pack.Destination), server.callbacks[string(metaPack.Pack.Destination)])
 }
 
-func (server *DistribServer) On(funcName string, callback interface{}) error {
-	if _, ok := server.callbacks[funcName]; ok {
-		panic(fmt.Sprintf("Callback name %q already existing; please choose a different one", funcName))
-	}
-
-	server.callbacks[funcName] = callback
-	return nil
+func (server *DistribServer) CountClients() int {
+	return len(server.clients)
 }
