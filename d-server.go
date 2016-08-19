@@ -376,6 +376,23 @@ func (server *DistribServer) On(funcName string, callback interface{}) error {
 		panic(fmt.Sprintf("Callback name %q already existing; please choose a different one", funcName))
 	}
 
+	debug("what type is the callback?")
+
+	switch callback.(type) {
+	case func(Context):
+		{
+			break
+		}
+	case func(Context) (interface{}, error):
+		{
+			break
+		}
+	default:
+		{
+			panic(fmt.Sprintf("Callback %q type is not supported; use %q or %q.", funcName, "func(Context){}", "func(Context) (interface{}, error){}"))
+		}
+	}
+
 	server.callbacks[funcName] = callback
 	return nil
 }

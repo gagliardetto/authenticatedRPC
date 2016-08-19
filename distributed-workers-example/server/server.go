@@ -56,7 +56,7 @@ func main() {
 		}
 	})
 
-	server.On("myNameIs", func(cc dis.Context) (string, error) {
+	server.On("myNameIs", func(cc dis.Context) (interface{}, error) {
 		return "Captain America", nil
 	})
 
