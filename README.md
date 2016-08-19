@@ -20,7 +20,7 @@ instance.On("autoDestruction", func(cc dis.Context) {
 })
 ```
 
-Request ( a call that returns a payload):
+Receive (a call that returns a payload):
 
 ```go
 instance.On("myNameIs", func(cc dis.Context) (interface{}, error) {
@@ -43,7 +43,7 @@ instance.On("something", func(cc dis.Context) {
 })
 ```
 
-How to call a request:
+How to call a Receive:
 
 ```go
 instance.On("something", func(cc dis.Context) {
