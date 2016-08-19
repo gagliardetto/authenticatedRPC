@@ -61,7 +61,14 @@ func (server *DistribServer) Run(indirizzo string) error {
 	}
 	server.Config.address = address
 
-	if !server.Config.DisableTLS {
+	if server.Config.DisableTLS {
+		listen, err = net.Listen("tcp", server.Config.address.String())
+		if err != nil {
+			return fmt.Errorf("Error listening plain text:", err.Error())
+		}
+		debug("Listening (plain) on " + server.Config.address.String())
+
+	} else {
 		if len(server.Config.Cert.Certificate) < 1 {
 			panic("Error: SSL is enabled, but no certificate was provided. Please provide certificate (recommended) or disable SSL.")
 		}
@@ -94,12 +101,6 @@ func (server *DistribServer) Run(indirizzo string) error {
 			return fmt.Errorf("Error listening TLS:", err.Error())
 		}
 		debug("Listening (TLS) on " + server.Config.address.String())
-	} else {
-		listen, err = net.Listen("tcp", server.Config.address.String())
-		if err != nil {
-			return fmt.Errorf("Error listening plain text:", err.Error())
-		}
-		debug("Listening (plain) on " + server.Config.address.String())
 	}
 
 	// Close the listener when the application closes.
@@ -146,11 +147,9 @@ func (server *DistribServer) Run(indirizzo string) error {
 func (server *DistribServer) handleConnectionFromClient(uuu string, conn net.Conn) {
 
 	defer func(conn net.Conn) {
+		debug(conn.LocalAddr(), conn.RemoteAddr())
 		defer delete(server.clients, uuu)
 		conn.Close()
-		localAddr := conn.LocalAddr()
-		remoteAddr := conn.RemoteAddr()
-		fmt.Println(localAddr, remoteAddr)
 	}(conn)
 
 	for {

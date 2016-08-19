@@ -53,7 +53,14 @@ func (client *DistribClient) Connect(indirizzo string) error {
 	}
 	client.Config.Server.address = address
 
-	if !client.Config.DisableTLS {
+	if client.Config.DisableTLS {
+		conn, err = net.Dial("tcp", client.Config.Server.address.String())
+		if err != nil {
+			return fmt.Errorf("Error connectting plain text:", err.Error())
+		}
+		debug("Connected via plain text conn. to " + client.Config.Server.address.String())
+
+	} else {
 		if len(client.Config.Cert.Certificate) < 1 {
 			panic("SSL is enabled, but no certificate was provided. Please provide a certificate (recommended) or disable SSL")
 		}
@@ -87,12 +94,6 @@ func (client *DistribClient) Connect(indirizzo string) error {
 			return fmt.Errorf("Error connecting TLS:", err.Error())
 		}
 		debug("Connected via TLS to " + client.Config.Server.address.String())
-	} else {
-		conn, err = net.Dial("tcp", client.Config.Server.address.String())
-		if err != nil {
-			return fmt.Errorf("Error connectting plain text:", err.Error())
-		}
-		debug("Connected via plain text conn. to " + client.Config.Server.address.String())
 	}
 
 	client.Conn = conn
@@ -123,10 +124,8 @@ func (client *DistribClient) handleConnectionFromServer() {
 	conn := client.Conn
 
 	defer func(conn net.Conn) {
+		debug(conn.LocalAddr(), conn.RemoteAddr())
 		conn.Close()
-		localAddr := conn.LocalAddr()
-		remoteAddr := conn.RemoteAddr()
-		fmt.Println(localAddr, remoteAddr)
 		client.Conn = nil
 	}(conn)
 
