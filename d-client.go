@@ -22,7 +22,7 @@ type (
 	}
 
 	ClientConfig struct {
-		EnableTLS      bool
+		DisableTLS     bool
 		Cert           tls.Certificate
 		PackExpiration time.Duration
 		PrivateKey     *rsa.PrivateKey
@@ -42,7 +42,6 @@ func NewClient() DistribClient {
 	newInstance.channels = FlowChannels{}
 	newInstance.channels.Channels = make(ChannelMap)
 
-	newInstance.Config.EnableTLS = true
 	newInstance.Config.PackExpiration = time.Second * 5
 
 	return newInstance
@@ -58,7 +57,7 @@ func (client *DistribClient) Connect(indirizzo string) error {
 	}
 	client.Config.Server.address = address
 
-	if client.Config.EnableTLS {
+	if !client.Config.DisableTLS {
 		if len(client.Config.Cert.Certificate) < 1 {
 			return fmt.Errorf("SSL is enabled, but no certificate was provided. Please provide a certificate (recommended) or disable SSL")
 		}
