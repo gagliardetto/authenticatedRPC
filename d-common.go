@@ -433,3 +433,66 @@ func debug(a ...interface{}) (n int, err error) {
 	}
 	return 0, nil
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+// Job holds the attributes needed to perform unit of work.
+type Job struct {
+	Name string
+	uuu  string
+	buf  []byte
+}
+
+// NewWorker creates takes a numeric id and a channel w/ worker pool.
+func NewWorker(id int, workerPool chan chan Job) Worker {
+	return Worker{
+		id:         id,
+		jobQueue:   make(chan Job),
+		workerPool: workerPool,
+		quitChan:   make(chan bool),
+	}
+}
+
+type Worker struct {
+	id         int
+	jobQueue   chan Job
+	workerPool chan chan Job
+	quitChan   chan bool
+}
+
+func (w Worker) stop() {
+	go func() {
+		w.quitChan <- true
+	}()
+}
+
+// NewDispatcher creates, and returns a new Dispatcher object.
+func NewDispatcher(jobQueue chan Job, maxWorkers int) *Dispatcher {
+	workerPool := make(chan chan Job, maxWorkers)
+
+	return &Dispatcher{
+		jobQueue:   jobQueue,
+		maxWorkers: maxWorkers,
+		workerPool: workerPool,
+	}
+}
+
+func (d *Dispatcher) dispatch() {
+	for {
+		select {
+		case job := <-d.jobQueue:
+			go func() {
+				fmt.Printf("fetching workerJobQueue for: %s\n", job.Name)
+				workerJobQueue := <-d.workerPool
+				fmt.Printf("adding %s to workerJobQueue\n", job.Name)
+				workerJobQueue <- job
+			}()
+		}
+	}
+}
+
+type Dispatcher struct {
+	workerPool chan chan Job
+	maxWorkers int
+	jobQueue   chan Job
+}

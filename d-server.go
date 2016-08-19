@@ -14,11 +14,6 @@ import (
 	"github.com/renstrom/shortuuid"
 )
 
-var (
-	maxWorkers   = 5
-	maxQueueSize = 100
-)
-
 type (
 	DistribServer struct {
 		callbacks map[string]interface{}
@@ -26,8 +21,10 @@ type (
 		channels  FlowChannels
 
 		sync.Mutex
-		dispatcher *Dispatcher
-		jobQueue   chan Job
+		dispatcher   *Dispatcher
+		jobQueue     chan Job
+		maxWorkers   int
+		maxQueueSize int
 
 		Config ServerConfig
 	}
@@ -74,10 +71,10 @@ func (server *DistribServer) Run(rawAddress string) error {
 	}
 
 	// Create the job queue.
-	server.jobQueue = make(chan Job, maxQueueSize)
+	server.jobQueue = make(chan Job, server.maxQueueSize)
 
 	// Start the dispatcher.
-	server.dispatcher = NewDispatcher(server.jobQueue, maxWorkers)
+	server.dispatcher = NewDispatcher(server.jobQueue, server.maxWorkers)
 	server.runDispatcher()
 
 	if server.Config.DisableTLS {
@@ -221,7 +218,7 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 		if !isPrefix && len(buf) > 0 {
 			// Create Job and push the work onto the jobQueue.
 			job := Job{
-				Name: "some job",
+				Name: "some server job",
 				uuu:  uuu,
 				buf:  buf,
 			}
@@ -234,46 +231,16 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 
 ///////////////////////////////////////////////////////////////////////////
 
-// Job holds the attributes needed to perform unit of work.
-type Job struct {
-	Name string
-	uuu  string
-	buf  []byte
-}
-
-// NewWorker creates takes a numeric id and a channel w/ worker pool.
-func NewWorker(id int, workerPool chan chan Job) Worker {
-	return Worker{
-		id:         id,
-		jobQueue:   make(chan Job),
-		workerPool: workerPool,
-		quitChan:   make(chan bool),
-	}
-}
-
-type Worker struct {
-	id         int
-	jobQueue   chan Job
-	workerPool chan chan Job
-	quitChan   chan bool
-}
-
 func (server *DistribServer) runDispatcher() {
 	for i := 0; i < server.dispatcher.maxWorkers; i++ {
 		worker := NewWorker(i+1, server.dispatcher.workerPool)
-		worker.start(server)
+		worker.startWithServer(server)
 	}
 
 	go server.dispatcher.dispatch()
 }
 
-type Dispatcher struct {
-	workerPool chan chan Job
-	maxWorkers int
-	jobQueue   chan Job
-}
-
-func (w Worker) start(server *DistribServer) {
+func (w Worker) startWithServer(server *DistribServer) {
 	go func() {
 		for {
 			// Add my jobQueue to the worker pool.
@@ -294,37 +261,6 @@ func (w Worker) start(server *DistribServer) {
 			}
 		}
 	}()
-}
-
-func (w Worker) stop() {
-	go func() {
-		w.quitChan <- true
-	}()
-}
-
-// NewDispatcher creates, and returns a new Dispatcher object.
-func NewDispatcher(jobQueue chan Job, maxWorkers int) *Dispatcher {
-	workerPool := make(chan chan Job, maxWorkers)
-
-	return &Dispatcher{
-		jobQueue:   jobQueue,
-		maxWorkers: maxWorkers,
-		workerPool: workerPool,
-	}
-}
-
-func (d *Dispatcher) dispatch() {
-	for {
-		select {
-		case job := <-d.jobQueue:
-			go func() {
-				fmt.Printf("fetching workerJobQueue for: %s\n", job.Name)
-				workerJobQueue := <-d.workerPool
-				fmt.Printf("adding %s to workerJobQueue\n", job.Name)
-				workerJobQueue <- job
-			}()
-		}
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

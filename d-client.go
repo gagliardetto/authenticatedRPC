@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"sync"
 )
 
 type (
@@ -16,6 +17,12 @@ type (
 		callbacks map[string]interface{}
 		Conn      net.Conn
 		channels  FlowChannels
+
+		sync.Mutex
+		dispatcher   *Dispatcher
+		jobQueue     chan Job
+		maxWorkers   int
+		maxQueueSize int
 
 		Config ClientConfig
 	}
@@ -47,13 +54,20 @@ func (client *DistribClient) Connect(indirizzo string) error {
 	var conn net.Conn
 	var err error
 
-	address, err := net.ResolveTCPAddr("tcp", indirizzo)
+	// Create the job queue.
+	client.jobQueue = make(chan Job, client.maxQueueSize)
+
+	// Start the dispatcher.
+	client.dispatcher = NewDispatcher(client.jobQueue, client.maxWorkers)
+	client.runDispatcher()
+
+	client.Config.Server.address, err = net.ResolveTCPAddr("tcp", indirizzo)
 	if err != nil {
 		return err
 	}
-	client.Config.Server.address = address
 
 	if client.Config.DisableTLS {
+
 		conn, err = net.Dial("tcp", client.Config.Server.address.String())
 		if err != nil {
 			return fmt.Errorf("Error connectting plain text:", err.Error())
@@ -61,6 +75,7 @@ func (client *DistribClient) Connect(indirizzo string) error {
 		debug("Connected via plain text conn. to " + client.Config.Server.address.String())
 
 	} else {
+
 		if len(client.Config.Cert.Certificate) < 1 {
 			panic("SSL is enabled, but no certificate was provided. Please provide a certificate (recommended) or disable SSL")
 		}
@@ -135,16 +150,57 @@ func (client *DistribClient) handleConnectionFromServer() {
 		buf, isPrefix, err := reader.ReadLine()
 
 		if err != nil {
-			debug("Error reading (client):\"", err.Error(), "\"")
+			fmt.Println(fmt.Sprintf("Error reading (client): %v", err.Error()))
 			conn.Close()
 			break
 		}
 
 		if !isPrefix && len(buf) > 0 {
-			go client.handleMessageFromServer(buf)
+			// Create Job and push the work onto the jobQueue.
+			job := Job{
+				Name: "some client job",
+				buf:  buf,
+			}
+			client.jobQueue <- job
 		}
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+func (client *DistribClient) runDispatcher() {
+	for i := 0; i < client.dispatcher.maxWorkers; i++ {
+		worker := NewWorker(i+1, client.dispatcher.workerPool)
+		worker.startWithClient(client)
+	}
+
+	go client.dispatcher.dispatch()
+}
+
+func (w Worker) startWithClient(client *DistribClient) {
+	go func() {
+		for {
+			// Add my jobQueue to the worker pool.
+			w.workerPool <- w.jobQueue
+
+			select {
+			case job := <-w.jobQueue:
+				// Dispatcher has added a job to my jobQueue.
+				debug("started job")
+
+				client.handleMessageFromServer(job.buf)
+
+				debug("job completed")
+			case <-w.quitChan:
+				// We have been asked to stop.
+				fmt.Printf("worker%d stopping\n", w.id)
+				return
+			}
+		}
+	}()
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 func (client *DistribClient) handleMessageFromServer(buf []byte) {
 	debug("received len:", len(buf))
