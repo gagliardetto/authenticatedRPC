@@ -21,7 +21,7 @@ import (
 var Debugging = false
 
 const (
-	ConnectEvent string = "connect"
+	ConnectEvent string = "DefaultConnectEvent"
 	//onopen
 	//onclose
 	//onerror

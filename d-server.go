@@ -189,13 +189,14 @@ func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 		fmt.Println(err)
 		return
 	}
-	encodedMessagePackHash := hash(encodedPack)
 
+	/*encodedMessagePackHash := hash(encodedPack)
 	hashesMatch := bytes.Equal(encodedMessagePackHash, metaPack.Hash)
 	if !hashesMatch {
 		fmt.Println("Hash equation failed:", string(encodedMessagePackHash), hash(metaPack.Hash))
 		return
 	}
+	*/
 
 	/*
 		packIsNotExpired := time.Now().Sub(metaPack.Pack.IssueDate) > server.Config.PackExpiration
