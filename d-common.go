@@ -57,7 +57,7 @@ type (
 
 	Pack struct {
 		Destination string
-		Payload     string
+		Payload     interface{}
 		Error       error
 		IssueDate   time.Time
 	}
@@ -72,7 +72,7 @@ type (
 	}
 
 	CallbackOfTrigger func(Context)
-	CallbackOfReceive func(Context) (string, error)
+	CallbackOfReceive func(Context) (interface{}, error)
 
 	FlowChannels struct {
 		Channels ChannelMap

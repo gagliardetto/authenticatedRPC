@@ -61,7 +61,7 @@ func main() {
 		}
 	})
 
-	client.On("myNameIs", func(cc dis.Context) (string, error) {
+	client.On("myNameIs", func(cc dis.Context) (interface{}, error) {
 		return "Tony Stark", nil
 	})
 

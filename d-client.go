@@ -330,7 +330,7 @@ func (client *DistribClient) Trigger(metaPack MetaPack) error {
 	}
 }
 
-func (client *DistribClient) Request(metaPack MetaPack) (string, error) {
+func (client *DistribClient) Request(metaPack MetaPack) (interface{}, error) {
 
 	if _, ok := client.callbacks[string(metaPack.Pack.Destination)]; !ok {
 		return "", fmt.Errorf("Callback %q does not exist", string(metaPack.Pack.Destination))
@@ -343,15 +343,15 @@ func (client *DistribClient) Request(metaPack MetaPack) (string, error) {
 	}
 
 	switch client.callbacks[string(metaPack.Pack.Destination)].(type) {
-	case func(Context) (string, error):
+	case func(Context) (interface{}, error):
 		{
-			fmt.Println("in Trigger, type is func(Context) (string, error)")
-			data, err := client.callbacks[string(metaPack.Pack.Destination)].(func(Context) (string, error))(cc)
+			fmt.Println("in Trigger, type is func(Context) (interface{}, error)")
+			data, err := client.callbacks[string(metaPack.Pack.Destination)].(func(Context) (interface{}, error))(cc)
 			fmt.Println("in Trigger, data, err:=", data, err)
 			return data, err
 		}
 	}
-	return "", fmt.Errorf("Callback %q is not of right format (%#v instead of func(Context) (string, error))", string(metaPack.Pack.Destination), client.callbacks[string(metaPack.Pack.Destination)])
+	return "", fmt.Errorf("Callback %q is not of right format (%#v instead of func(Context) (interface{}, error))", string(metaPack.Pack.Destination), client.callbacks[string(metaPack.Pack.Destination)])
 }
 
 func (client *DistribClient) On(funcName string, callback interface{}) error {

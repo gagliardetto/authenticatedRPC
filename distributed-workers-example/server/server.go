@@ -38,7 +38,7 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println("Awesome to meet you,", responsePack.Payload)
+		fmt.Println("@@@@@@@@@ Awesome to meet you,", responsePack.Payload.(string))
 	})
 
 	server.On("ping-pong", func(cc dis.Context) {

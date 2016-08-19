@@ -406,7 +406,7 @@ func (server *DistribServer) Trigger(uuu string, metaPack MetaPack) error {
 	}
 }
 
-func (server *DistribServer) Request(uuu string, metaPack MetaPack) (string, error) {
+func (server *DistribServer) Request(uuu string, metaPack MetaPack) (interface{}, error) {
 
 	if _, ok := server.callbacks[string(metaPack.Pack.Destination)]; !ok {
 		return "", fmt.Errorf("Callback %q does not exist", string(metaPack.Pack.Destination))
@@ -419,15 +419,15 @@ func (server *DistribServer) Request(uuu string, metaPack MetaPack) (string, err
 	}
 
 	switch server.callbacks[string(metaPack.Pack.Destination)].(type) {
-	case func(Context) (string, error):
+	case func(Context) (interface{}, error):
 		{
-			fmt.Println("in Trigger, type is func(Context) (string, error)")
-			data, err := server.callbacks[string(metaPack.Pack.Destination)].(func(Context) (string, error))(cc)
+			fmt.Println("in Trigger, type is func(Context) (interface{}, error)")
+			data, err := server.callbacks[string(metaPack.Pack.Destination)].(func(Context) (interface{}, error))(cc)
 			fmt.Println("in Trigger, data, err:=", data, err)
 			return data, err
 		}
 	}
-	return "", fmt.Errorf("Callback %q is not of right format (%#v instead of func(Context) (string, error))", string(metaPack.Pack.Destination), server.callbacks[string(metaPack.Pack.Destination)])
+	return "", fmt.Errorf("Callback %q is not of right format (%#v instead of func(Context) (interface{}, error))", string(metaPack.Pack.Destination), server.callbacks[string(metaPack.Pack.Destination)])
 }
 
 func (server *DistribServer) CountClients() int {
