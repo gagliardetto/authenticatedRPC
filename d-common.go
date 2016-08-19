@@ -110,7 +110,7 @@ func (cc *Context) Receive(messagePack Pack) (Pack, error) {
 	cc.Local.channels.Channels[ID] = &FlowChannel{}
 	cc.Local.channels.Channels[ID].Channel = channel
 	cc.Local.channels.Unlock()
-	fmt.Println("===QUI===")
+	debug("===QUI===")
 
 	defer close(cc.Local.channels.Channels[ID].Channel)
 
@@ -129,7 +129,7 @@ func (cc *Context) Receive(messagePack Pack) (Pack, error) {
 	select {
 	case responsePack = <-cc.Local.channels.Channels[ID].Channel:
 		{
-			fmt.Println("new received:", responsePack)
+			debug("new received:", responsePack)
 			return responsePack, nil
 		}
 	case <-time.After(requestMaxDuration):
@@ -152,7 +152,7 @@ func (cc *Context) compileAndSendMetaPack(metaPack *MetaPack) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("sending # bytes:", len(encodedMetaPack))
+	debug("sending # bytes:", len(encodedMetaPack))
 	encodedMetaPack = append(encodedMetaPack[:], []byte("\r\n")[:]...)
 	_, err = cc.Conn.Write(encodedMetaPack)
 	if err != nil {
@@ -423,7 +423,7 @@ func hash(bytesToHash []byte) []byte {
 
 func debugf(format string, a ...interface{}) (n int, err error) {
 	if debugging {
-		return fmt.Printf("\n"+format+"\n", a...)
+		return fmt.Println(fmt.Sprintf(format, a...))
 	}
 	return 0, nil
 }

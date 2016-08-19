@@ -102,13 +102,13 @@ func (server *DistribServer) Run(indirizzo string) error {
 		if err != nil {
 			return fmt.Errorf("Error listening TLS:", err.Error())
 		}
-		fmt.Println("Listening (TLS) on " + server.Config.address.String())
+		debug("Listening (TLS) on " + server.Config.address.String())
 	} else {
 		listen, err = net.Listen("tcp", server.Config.address.String())
 		if err != nil {
 			return fmt.Errorf("Error listening plain text:", err.Error())
 		}
-		fmt.Println("Listening (plain) on " + server.Config.address.String())
+		debug("Listening (plain) on " + server.Config.address.String())
 	}
 
 	// Close the listener when the application closes.
@@ -118,7 +118,7 @@ func (server *DistribServer) Run(indirizzo string) error {
 		// Listen for an incoming connection.
 		conn, err := listen.Accept()
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			debug("Error accepting: ", err.Error())
 			continue
 		}
 
@@ -133,7 +133,7 @@ func (server *DistribServer) Run(indirizzo string) error {
 		// Is called when a client connects to this server.
 		go func(server *DistribServer) {
 			if _, ok := server.callbacks[ConnectEvent]; ok {
-				fmt.Println("event triggered when a client connects to this server!")
+				debug("event triggered when a client connects to this server!")
 				err = server.Trigger(uuu, MetaPack{
 					Pack: Pack{
 						Destination: ConnectEvent,
@@ -142,7 +142,7 @@ func (server *DistribServer) Run(indirizzo string) error {
 					Type: triggerCallType,
 				})
 				if err != nil {
-					fmt.Println(err)
+					debug(err)
 				}
 			}
 		}(server)
@@ -179,12 +179,12 @@ func (server *DistribServer) handleConnectionFromClient(uuu string, conn net.Con
 }
 
 func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
-	fmt.Println("received len:", len(buf))
-	fmt.Printf("%v#\n", string(buf))
+	debug("received len:", len(buf))
+	debugf("%v#\n", string(buf))
 
 	metaPack, err := decodeMetaPack(buf)
 	if err != nil {
-		fmt.Println("SERVER", err)
+		debug("SERVER", err)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 	packIsRequestAnswerType := metaPack.CallID != "" && metaPack.Type == requestAnswerType
 
 	if packIsTriggerCallType {
-		fmt.Println("Type:", triggerCallType)
+		debug("Type:", triggerCallType)
 		// send back error if: anything goes wrong up to this point (up to callback does not exist)
 		err = server.Trigger(uuu, metaPack) // does NOT wait for server.callbacks[something] to finish executing
 		if err != nil {
@@ -222,10 +222,10 @@ func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 		}
 		return
 	} else if packIsTriggerAnswerType {
-		fmt.Println("Type:", triggerAnswerType)
+		debug("Type:", triggerAnswerType)
 
 	} else if packIsRequestCallType {
-		fmt.Println("Type:", requestCallType)
+		debug("Type:", requestCallType)
 		// send back error if: anything goes wrong up to this point, and `data, err`:= ...
 		data, err := server.Request(uuu, metaPack) // DOES wait for server.callbacks[destination] to finish executing
 
@@ -246,7 +246,7 @@ func (server *DistribServer) handleServerMessage(uuu string, buf []byte) {
 		cc.compileAndSendMetaPack(responseMetaPack)
 		return
 	} else if packIsRequestAnswerType {
-		fmt.Println("Type:", requestAnswerType)
+		debug("Type:", requestAnswerType)
 		server.channels.RLock()
 		if _, ok := server.channels.Channels[metaPack.CallID]; ok {
 			server.channels.Channels[metaPack.CallID].Channel <- metaPack.Pack

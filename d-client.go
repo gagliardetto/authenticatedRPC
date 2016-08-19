@@ -91,13 +91,13 @@ func (client *DistribClient) Connect(indirizzo string) error {
 		if err != nil {
 			return fmt.Errorf("Error connecting TLS:", err.Error())
 		}
-		fmt.Println("Connected via TLS to " + client.Config.Server.address.String())
+		debug("Connected via TLS to " + client.Config.Server.address.String())
 	} else {
 		conn, err = net.Dial("tcp", client.Config.Server.address.String())
 		if err != nil {
 			return fmt.Errorf("Error connectting plain text:", err.Error())
 		}
-		fmt.Println("Connected via plain text conn. to " + client.Config.Server.address.String())
+		debug("Connected via plain text conn. to " + client.Config.Server.address.String())
 	}
 
 	client.Conn = conn
@@ -105,7 +105,7 @@ func (client *DistribClient) Connect(indirizzo string) error {
 	// Is called when this client connects to a server·
 	go func(client *DistribClient) {
 		if _, ok := client.callbacks[ConnectEvent]; ok {
-			fmt.Println("event triggered when connecting to the server!")
+			debug("event triggered when connecting to the server!")
 			err = client.Trigger(MetaPack{
 				Pack: Pack{
 					Destination: ConnectEvent,
@@ -140,7 +140,7 @@ func (client *DistribClient) handleConnectionFromServer() {
 		buf, isPrefix, err := reader.ReadLine()
 
 		if err != nil {
-			fmt.Println("Error reading (client):\"", err.Error(), "\"")
+			debug("Error reading (client):\"", err.Error(), "\"")
 			conn.Close()
 			break
 		}
@@ -152,12 +152,12 @@ func (client *DistribClient) handleConnectionFromServer() {
 }
 
 func (client *DistribClient) handleMessageFromServer(buf []byte) {
-	fmt.Println("received len:", len(buf))
-	fmt.Printf("%v#\n", string(buf))
+	debug("received len:", len(buf))
+	debugf("%v#\n", string(buf))
 
 	metaPack, err := decodeMetaPack(buf)
 	if err != nil {
-		fmt.Println("CLIENT", err)
+		debug("CLIENT", err)
 		return
 	}
 
