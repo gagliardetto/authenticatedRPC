@@ -1,7 +1,7 @@
 package main
 
 import (
-	dis "github.com/gagliardetto/authenticated-RPC-in-Go"
+	dis "github.com/gagliardetto/authenticatedRPC"
 
 	"crypto/tls"
 	"fmt"

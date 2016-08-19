@@ -1,4 +1,4 @@
-# authenticated-RPC-in-Go
+# authenticatedRPC
 
 ## Description
 
@@ -7,7 +7,7 @@ TLS-encrypted TCP-based real-time bidirectional authenticated RPC.
 ## Installation
 
 ```
-go get -u github.com/gagliardetto/authenticated-RPC-in-Go
+go get -u github.com/gagliardetto/authenticatedRPC
 ```
 
 ## Getting Started

@@ -18,6 +18,8 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
+var Debugging = false
+
 const (
 	ConnectEvent string = "connect"
 	//onopen
@@ -417,4 +419,17 @@ func hash(bytesToHash []byte) []byte {
 	hash := hasher.Sum(nil)
 	return hash
 	//base64hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
+func debugf(format string, a ...interface{}) (n int, err error) {
+	if debugging {
+		return fmt.Printf("\n"+format+"\n", a...)
+	}
+	return 0, nil
+}
+func debug(a ...interface{}) (n int, err error) {
+	if debugging {
+		return fmt.Println(a...)
+	}
+	return 0, nil
 }
