@@ -1,6 +1,6 @@
 ## TODO
 
-+ [ ] test when I have alpha
++ [ ] ADD TESTS ON ALPHA STAGE
 + [ ] Use see http://marcio.io/2015/07/handling-1-million-requests-per-minute-with-golang/ fot the handleServerRequest/handleClientRequest
 + [ ] Risolvere i memory leak
 + [ ] instance.Close()
