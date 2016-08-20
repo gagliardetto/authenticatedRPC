@@ -25,12 +25,11 @@
 + [ ] do not distinguish between servers and clients; make them all peers, and make them comunicate between them; run one peer, and then create others and let them connect to the first and the others; share node knowledge ("I know this and that; now you them too.")
 
 
-+ [x] ```tls.Dial("tcp", addr.String(), &tls.Config{
++ [x] tls.Dial("tcp", addr.String(), &tls.Config{
 				ServerName: "www.mongodirector.com",
 				//InsecureSkipVerify: false,
 				RootCAs: mongoCertPool,
 			})
-	```
 			https://golang.org/pkg/crypto/tls/#example_Dial
 
 
