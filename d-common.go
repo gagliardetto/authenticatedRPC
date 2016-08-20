@@ -110,7 +110,7 @@ func (cc *Context) Receive(messagePack Pack) (Pack, error) {
 	cc.Local.channels.Channels[ID] = &FlowChannel{}
 	cc.Local.channels.Channels[ID].Channel = channel
 	cc.Local.channels.Unlock()
-	debug("===QUI===")
+	debug("Receive")
 
 	defer close(cc.Local.channels.Channels[ID].Channel)
 

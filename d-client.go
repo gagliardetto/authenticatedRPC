@@ -171,8 +171,8 @@ func (client *DistribClient) handleConnectionFromServer() {
 ///////////////////////////////////////////////////////////////////////////////
 
 func (client *DistribClient) runDispatcher() {
-	for i := 0; i < client.dispatcher.maxWorkers; i++ {
-		worker := NewWorker(i+1, client.dispatcher.workerPool)
+	for i := 1; i <= client.dispatcher.maxWorkers; i++ {
+		worker := NewWorker(i, client.dispatcher.workerPool)
 		worker.startWithClient(client)
 	}
 
@@ -244,7 +244,7 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 	packIsRequestAnswerType := metaPack.CallID != "" && metaPack.Type == requestAnswerType
 
 	if packIsTriggerCallType {
-		fmt.Println("Type:", triggerCallType)
+		debug("Type:", triggerCallType)
 		err = client.Trigger(metaPack)
 		if err != nil {
 			fmt.Println(err)
@@ -252,10 +252,11 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 		}
 		return
 	} else if packIsTriggerAnswerType {
-		fmt.Println("Type:", triggerAnswerType)
+		debug("Type:", triggerAnswerType)
+		// TODO: return err if err != nil ???
 
 	} else if packIsRequestCallType {
-		fmt.Println("Type:", requestCallType)
+		debug("Type:", requestCallType)
 		// send back error if: anything goes wrong up to this point, and `data, err`:= ...
 		data, err := client.Request(metaPack) // DOES wait for client.callbacks[destination] to finish executing
 
@@ -276,7 +277,7 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 		cc.compileAndSendMetaPack(responseMetaPack)
 		return
 	} else if packIsRequestAnswerType {
-		fmt.Println("Type:", requestAnswerType)
+		debug("Type:", requestAnswerType)
 		client.channels.RLock()
 		defer func() { recover() }()
 		if _, ok := client.channels.Channels[metaPack.CallID]; ok {
@@ -285,7 +286,7 @@ func (client *DistribClient) handleMessageFromServer(buf []byte) {
 		client.channels.RUnlock()
 		return
 	}
-	fmt.Println("Unsupported Type:", metaPack.Type)
+	debug("Unsupported Type:", metaPack.Type)
 	return
 }
 
@@ -312,7 +313,7 @@ func (client *DistribClient) Trigger(metaPack MetaPack) error {
 
 	cc, err := client.newContext(metaPack.Pack)
 	if err != nil {
-		fmt.Println(err)
+		debug(err)
 		return err
 	}
 
@@ -338,16 +339,16 @@ func (client *DistribClient) Request(metaPack MetaPack) (interface{}, error) {
 
 	cc, err := client.newContext(metaPack.Pack)
 	if err != nil {
-		fmt.Println(err)
+		debug(err)
 		return "", err
 	}
 
 	switch client.callbacks[string(metaPack.Pack.Destination)].(type) {
 	case func(Context) (interface{}, error):
 		{
-			fmt.Println("in Trigger, type is func(Context) (interface{}, error)")
+			debug("in Request: type is func(Context) (interface{}, error)")
 			data, err := client.callbacks[string(metaPack.Pack.Destination)].(func(Context) (interface{}, error))(cc)
-			fmt.Println("in Trigger, data, err:=", data, err)
+			debug("in Request: data, err := %v, %v", data, err)
 			return data, err
 		}
 	}

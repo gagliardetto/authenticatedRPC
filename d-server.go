@@ -80,6 +80,7 @@ func (server *DistribServer) Run(rawAddress string) error {
 	server.dispatcher = NewDispatcher(server.jobQueue, server.maxWorkers)
 	server.runDispatcher()
 
+	// start a plain-text listener if TLS is disabled
 	if server.Config.DisableTLS {
 
 		listener, err = net.Listen("tcp", server.Config.address.String())
@@ -89,6 +90,7 @@ func (server *DistribServer) Run(rawAddress string) error {
 		debug("Listening (plain) on " + server.Config.address.String())
 
 	} else {
+		// else start a TLS-encryted listener
 
 		if len(server.Config.Cert.Certificate) < 1 {
 			panic("Error: SSL is enabled, but no certificate was provided. Please provide certificate (recommended) or disable SSL.")
@@ -168,6 +170,7 @@ func (server *DistribServer) Run(rawAddress string) error {
 	}
 }
 
+// AddClient adds a client to the clients array
 func (s *DistribServer) AddClient(newClient Client) error {
 	s.Lock()
 	defer s.Unlock()
@@ -181,6 +184,7 @@ func (s *DistribServer) AddClient(newClient Client) error {
 	return nil
 }
 
+// ClientById returns a client by its id
 func (s *DistribServer) ClientById(uuu string) (*Client, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -191,6 +195,7 @@ func (s *DistribServer) ClientById(uuu string) (*Client, error) {
 	return &Client{}, fmt.Errorf("Client with id %v does not exists", uuu)
 }
 
+// handleConnectionFromClient handles the incoming connection from a new client
 func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 
 	var client *Client
@@ -203,7 +208,7 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 	conn = client.Conn
 
 	defer func(conn net.Conn) {
-		debug(conn.LocalAddr(), conn.RemoteAddr())
+		debugf("local: %v; remote: %v", conn.LocalAddr(), conn.RemoteAddr())
 		defer delete(server.clients, uuu)
 		conn.Close()
 	}(conn)
@@ -235,12 +240,13 @@ func (server *DistribServer) handleConnectionFromClient(uuu string) error {
 
 ///////////////////////////////////////////////////////////////////////////
 
+// runDispatcher starts all workers
 func (server *DistribServer) runDispatcher() {
-	for i := 0; i < server.dispatcher.maxWorkers; i++ {
-		worker := NewWorker(i+1, server.dispatcher.workerPool)
-		debug("starting worker.startWithServer(server)")
+	for i := 1; i <= server.dispatcher.maxWorkers; i++ {
+		worker := NewWorker(i, server.dispatcher.workerPool)
+		debug("starting worker with server")
 		worker.startWithServer(server)
-		debug("started worker.startWithServer(server)")
+		debug("worker started with server")
 	}
 
 	go server.dispatcher.dispatch()
@@ -250,12 +256,12 @@ func (w Worker) startWithServer(server *DistribServer) {
 	go func() {
 		for {
 			debug("startWithServer")
-			// Add my jobQueue to the worker pool.
+			// Add my jobQueue to the worker pool
 			w.workerPool <- w.jobQueue
 
 			select {
 			case job := <-w.jobQueue:
-				// Dispatcher has added a job to my jobQueue.
+				// Dispatcher has added a job to my jobQueue
 				debug("started job")
 
 				server.handleMessageFromClient(job.uuu, job.buf)
@@ -272,6 +278,7 @@ func (w Worker) startWithServer(server *DistribServer) {
 
 ///////////////////////////////////////////////////////////////////////////
 
+// handleMessageFromClient receives the message from the client (uuu) and handles it
 func (server *DistribServer) handleMessageFromClient(uuu string, buf []byte) {
 	debug("received len:", len(buf))
 	debugf("%v#\n", string(buf))
@@ -321,6 +328,7 @@ func (server *DistribServer) handleMessageFromClient(uuu string, buf []byte) {
 		return
 	} else if packIsTriggerAnswerType {
 		debug("Type:", triggerAnswerType)
+		// TODO: return err if err != nil ???
 
 	} else if packIsRequestCallType {
 		debug("Type:", requestCallType)
@@ -405,14 +413,14 @@ func (server *DistribServer) Trigger(uuu string, metaPack MetaPack) error {
 
 	cc, err := server.newContext(uuu, metaPack.Pack)
 	if err != nil {
-		fmt.Println(err)
+		debug(err)
 		return err
 	}
 
 	switch server.callbacks[string(metaPack.Pack.Destination)].(type) {
 	case func(Context):
 		{
-			fmt.Println("in Trigger, type is func(Context)")
+			debug("in Trigger, type is func(Context)")
 			go server.callbacks[string(metaPack.Pack.Destination)].(func(Context))(cc)
 			return nil
 		}
@@ -431,16 +439,16 @@ func (server *DistribServer) Request(uuu string, metaPack MetaPack) (interface{}
 
 	cc, err := server.newContext(uuu, metaPack.Pack)
 	if err != nil {
-		fmt.Println(err)
+		debug(err)
 		return "", err
 	}
 
 	switch server.callbacks[string(metaPack.Pack.Destination)].(type) {
 	case func(Context) (interface{}, error):
 		{
-			fmt.Println("in Trigger, type is func(Context) (interface{}, error)")
+			debug("in Request, type is func(Context) (interface{}, error)")
 			data, err := server.callbacks[string(metaPack.Pack.Destination)].(func(Context) (interface{}, error))(cc)
-			fmt.Println("in Trigger, data, err:=", data, err)
+			debugf("in Request: data, err := %v, %v", data, err)
 			return data, err
 		}
 	}
